@@ -163,7 +163,7 @@ defmodule AbsintheClient.WebSocket do
 
     config_options = [
       uri: req.url,
-      headers: req.headers,
+      headers: normalize_headers(req.headers),
       mint_opts: [
         protocols: [:http1],
         transport_opts: [timeout: mint_options[:timeout] || 30_000]
@@ -189,6 +189,19 @@ defmodule AbsintheClient.WebSocket do
         {req, error}
     end
   end
+
+  # Converts headers from req 0.5.x map format to list format expected by Slipstream.
+  # In req 0.5.x: %{"header-name" => ["value1", "value2"]}
+  # Slipstream expects: [{"header-name", "value1"}, {"header-name", "value2"}]
+  defp normalize_headers(headers) when is_map(headers) do
+    Enum.flat_map(headers, fn {key, values} ->
+      values
+      |> List.wrap()
+      |> Enum.map(fn value -> {key, value} end)
+    end)
+  end
+
+  defp normalize_headers(headers) when is_list(headers), do: headers
 
   defp put_connect_params(%Request{} = req) do
     case Map.fetch(req.options, :connect_params) do
